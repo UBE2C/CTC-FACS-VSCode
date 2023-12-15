@@ -1,4 +1,4 @@
-
+#!user/bin/Rscript
 
 #==================================#
 #|                                |#
@@ -83,9 +83,10 @@ packages <- c("tidyverse", "rebus", "progress", "ggpubr", "ggsci", "rstudioapi",
 
 lapply(packages, library, character.only = TRUE)
 
-#Define the working directory
+#Define the working directory and the directory containing the .fcs and other necessary files
 path <- c("/Users/ramasz/Coding/Gabi_R")
 setwd(path)
+FACS_files <- c("/FACS_fcs_csv_files")
 
 
 # Define the script version for output files, for easier version control, and make a dedicated folder in the WD
@@ -114,12 +115,8 @@ define_version_create_folder = function(directory_name = "FACS") {
 }
 define_version_create_folder()
 
-#Define the script version for output files, for easier cersion control
-script_version <- str_extract(getActiveDocumentContext()$path, "V" %R% one_or_more(ASCII_ALNUM) %R% one_or_more(PUNCT) %R%
-                                  one_or_more(ASCII_ALNUM) %R% one_or_more(PUNCT) %R% one_or_more(ASCII_ALNUM)) 
 
-
-#some additional code which might be useful later
+# Some additional code which might be useful later
 #indexFs <- list.files(path = ".", pattern = "*_INX_*.*.fcs$", recursive = TRUE)
 #sDates <- str_extract(files, START %R% one_or_more(ALNUM) %R%
 #                        "-" %R% one_or_more(ALNUM) %R%
@@ -127,16 +124,16 @@ script_version <- str_extract(getActiveDocumentContext()$path, "V" %R% one_or_mo
 #sDates <- unique(sDates)
 
 
-#Load fcs files from the wd in a recursive manner
-load_fcs <- function(path = getwd(), file_pattern = ".fcs$", test_set = FALSE, recursive = TRUE) {
-  files <- list.files(path = path, pattern = file_pattern, recursive = recursive)
-  sNames <- paste0(str_extract(files, "^2022......."),
-                   str_extract(files, "Specimen.*."))
+# Load fcs files from the wd in a recursive manner
+load_fcs = function(path = getwd(), file_pattern = ".fcs$", test_set = FALSE, full_path = TRUE, recursive = TRUE) {
+  files <- list.files(path = path, pattern = file_pattern, full.names = full_path, recursive = recursive)
+  sNames <- paste0(stringr::str_extract(files, "2022......."),
+                   stringr::str_extract(files, "Specimen.*."))
   
   if (test_set == TRUE) {
       test_lst <- list()
       for (e in 1:5) {
-          test_lst[[e]] <- read.FCS(files[e])
+          test_lst[[e]] <- flowCore::read.FCS(files[e])
       }
       names(test_lst) <- sNames[1:5]
       message("A test set was requested, compiling a 5 element set into the object test_lst and the SortList")
@@ -146,7 +143,7 @@ load_fcs <- function(path = getwd(), file_pattern = ".fcs$", test_set = FALSE, r
   }
   
   
-  progressBar <- progress_bar$new(format = "(:spin) [:bar] :percent [Elapsed time: :elapsedfull || Estimated time remaining: :eta]",
+  progressBar <- progress::progress_bar$new(format = "(:spin) [:bar] :percent [Elapsed time: :elapsedfull || Estimated time remaining: :eta]",
                                   total = length(files),
                                   complete = "=",
                                   incomplete = "-",
@@ -158,7 +155,7 @@ load_fcs <- function(path = getwd(), file_pattern = ".fcs$", test_set = FALSE, r
   for (e in seq_along(files)) {
     progressBar$tick()
       
-    sList[[e]] <- read.FCS(files[e])
+    sList[[e]] <- flowCore::read.FCS(files[e])
   }
   names(sList) <- sNames
   
@@ -172,19 +169,25 @@ load_fcs <- function(path = getwd(), file_pattern = ".fcs$", test_set = FALSE, r
   }
   
 }
-load_fcs()
+load_fcs(path = paste0(path, FACS_files))
+
+#################################################################   End Section  ##################################################################
 
 
 
 
-###Start to prep the FlowFrames for data normalization, this will take several steps
+
+
+#################################################################  Prepare the FlowFrames for  ##################################################################
+                                                                #      data normalization      #
 
 
 
-##Extracting the control experiments done with C4-2 cells at the beginning every sort session
+
+## Extracting the control experiments done with C4-2 cells at the beginning every sort session
 
 
-#Subset the control samples for normalization (FF stands for FlowFrame)
+# Subset the control samples for normalization (FF stands for FlowFrame)
 sCtrl <- names(SortList)[grep("C4-2", names(SortList))]
 sCtrl <- sCtrl[!grepl("INX", sCtrl)]
 
@@ -195,10 +198,12 @@ names(channel_names) <- NULL
 names(ctrlFFs)[30] <- "2022-05-23 Specimen_001_C4-2 pos ctr_003.fcs"
 
 
-##Extracting the dataframes containing the MFI values from the ctrlFlowFrames (ctrlFFs) to check the distribution
 
 
-#This loop will re-assign the MFI values from the ctrlFFs to a new list, and makes a unified df
+## Extracting the dataframes containing the MFI values from the ctrlFlowFrames (ctrlFFs) to check the distribution
+
+
+# This loop will re-assign the MFI values from the ctrlFFs to a new list, and makes a unified df
 ctrlFF_dfs <- list()
 for(e in seq_along(ctrlFFs)){
     ctrlFF_dfs[[e]] <- ctrlFFs[[e]]@exprs
@@ -207,7 +212,8 @@ ctrlFF_dfs <- do.call(rbind, ctrlFF_dfs)
 ctrlFF_dfs <- as.data.frame(ctrlFF_dfs)
 head(ctrlFF_dfs)
 
-#I will clean the colnames and subset the ctrlFF_dfs to get only the fluorophore channels
+
+# I will clean the colnames and subset the ctrlFF_dfs to get only the fluorophore channels
 ctrlFF_dfs <- mutate(ctrlFF_dfs, "Time" = NULL)
 colnames(ctrlFF_dfs) <- c("FSC.A", "FSC.H", "FSC.W", "SSC.A", "SSC.H",
                            "SSC.W", "EpCAM", "DAPI_CD45", "Caspase_3.7", "PSMA")
@@ -216,18 +222,18 @@ ctrlFF_dfs_Fluo <- ctrlFF_dfs[, c(7, 10)]
 head(ctrlFF_dfs_Fluo)
 
 
-#To see the data distribution and spot if there are some values which are strong outliers I transform the dataframe to a long version
-#and I make a density plot. This will help me to determine if I want to use the mean or the median for normalization
+# To see the data distribution and spot if there are some values which are strong outliers I transform the dataframe to a long version
+# and I make a density plot. This will help me to determine if I want to use the mean or the median for normalization
 
-#Note: it is not recommended to use the mean values for MFI dta anylsis since it normally does not follow normal distribution
-#instead one should use the median values, so all the calculations and normalization will be done by the median values
+# Note: it is not recommended to use the mean values for MFI dta analysis since it normally does not follow normal distribution
+# instead one should use the median values, so all the calculations and normalization will be done by the median values
 ctrlFF_dfs_Fluo <- dplyr::select(ctrlFF_dfs_Fluo, EpCAM, PSMA)
 long_ctrlFF_dfs_Fluo <- pivot_longer(ctrlFF_dfs_Fluo, cols = c(EpCAM, PSMA),
                              names_to = "Channels", values_to = "MFI_values")
 
-#Density plot to see if the data is normally distributed or not (probably not)
+# Density plot to see if the data is normally distributed or not (probably not)
 ggplot(data = long_ctrlFF_dfs_Fluo,
-       aes(x = MFI_values, fill = Channels)) +
+       aes(x = log10(MFI_values), fill = Channels)) +
     #scale_x_continuous(limits = c(0, 6000)) +
     geom_density(alpha = 0.5) +
     theme_classic()
@@ -235,11 +241,12 @@ rm(long_ctrlFF_dfs_Fluo)
 
 
 
-##Calculating the medians of the control samples for normalization and QC
+
+## Calculating the medians of the control samples for normalization and QC
 
 
-#calculate the median MFI values for the control samples which will be used for normalization and QC
-medianFlowFrame <- function(flowframe) {
+# Calculate the median MFI values for the control samples which will be used for normalization and QC
+medianFlowFrame = function(flowframe) {
     tmp_lst <- list()
     for (i in seq_along(flowframe)) {
         
@@ -254,7 +261,7 @@ medianFlowFrame <- function(flowframe) {
     median_lst <- list()
     for (e in seq_along(tmp_lst)){
         median_lst[[e]] <- df
-        for (i in 1:ncol(tmp_lst[[1]])){
+        for (i in seq_len(ncol(tmp_lst[[1]]))) {
             m <- median(tmp_lst[[e]][, i])
             median_lst[[e]][i] <- m
         }
@@ -267,27 +274,27 @@ ctrlMedian <- medianFlowFrame(ctrlFFs)
 head(ctrlMedian)
 
 
-#Due to the fact that Both Martina and Me ran/used the same control set on the same day, there might be duplicates in the dataframe
-#I write a function which check if elements of the list are redundant/equal. If yes, remove them.
-equal_elements <- function (data){
+# Due to the fact that Both Martina and Me ran/used the same control set on the same day, there might be duplicates in the dataframe
+# I write a function which check if elements of the list are redundant/equal. If yes, remove them.
+equal_elements = function(data) {
   tmp <- c()
   for (i in seq_along(data)) {
-    if (i < length(data)){
+    if (i < length(data)) {
       if (all(data[[i]] == data[[i + 1]])) {
-        tmp[i] <- paste0("Elements ", i, " and ", i+1, " are equal")
+        tmp[i] <- paste0("Elements ", i, " and ", i + 1, " are equal")
       } else {
-        tmp[i] <- paste0("Elements ", i, " and ", i+1, " are not equal")
+        tmp[i] <- paste0("Elements ", i, " and ", i + 1, " are not equal")
       }
     } else {
       break
     }  
   }
   
-  to_remove <- which(grepl("are equal", tmp)) #which(...): This function then finds the indices of TRUE values in the logical vector returned by grepl(...). These indices correspond to the elements that match the pattern.
+  to_remove <- which(grepl("are equal", tmp)) # which(...): This function then finds the indices of TRUE values in the logical vector returned by grepl(...). These indices correspond to the elements that match the pattern.
   
   if (length(to_remove) > 0) {
       message(paste("Elements", paste(to_remove, collapse = ", "), "are duplicated so one of the elements will be removed"))
-      data_2 <- data[-to_remove] #this -to_remove will remove the selected values
+      data_2 <- data[-to_remove] # this -to_remove will remove the selected values
       } else {
       message("no duplicated elements found, returning the unmodified object")
       }
@@ -300,15 +307,16 @@ equal_elements(ctrlMedian)
 head(ctrlMedian_clean)
 
 
-#this function merges the ctrl dataframes (MFI values) for easier visualization
+# This function merges the ctrl dataframes (MFI values) for easier visualization
 ctrlMedian_df <- do.call(rbind, ctrlMedian_clean)
 
 
-#this snippet will remove the Time col. and changes the channel names to the easier to understand ones
-#640-670/30 - Incucyte Caspase 3/7
-#405-450/50 - DAPI + CD45
-#488-530/30 - EpCAM
-#561-780/60 - PSMA
+# This snippet will remove the Time col. and changes the channel names to the easier to understand ones
+# NOTE: here are the annotated channel names:
+# 640-670/30 - Incucyte Caspase 3/7
+# 405-450/50 - DAPI + CD45
+# 488-530/30 - EpCAM
+# 561-780/60 - PSMA
 ctrlMedian_df <- mutate(ctrlMedian_df, "Time" = NULL)
 df_colnames <- c("FSC.A", "FSC.H", "FSC.W", "SSC.A", "SSC.H",
                  "SSC.W", "EpCAM", "DAPI_CD45", "Caspase_3.7", "PSMA")
@@ -321,12 +329,14 @@ head(ctrlMedian_Fluo)
 rm(ctrlSumm, ctrlMedian, ctrlMedian_clean, ctrlFF_dfs)
 
 
-#Calculating the distribution values like MAD (Median Absolute Deviation) and MADM (Median Absolute Deviation of the medians) for QC
 
-#1st calculating QC values
-calculating_grand_median <- function(data) {
+
+## Calculating the distribution values like MAD (Median Absolute Deviation) and MADM (Median Absolute Deviation of the medians) for QC
+
+# 1st calculating QC values
+calculating_grand_median = function(data) {
     gMedian <- data.frame(matrix(nrow = 1, ncol = ncol(data)))
-    for (e in 1:ncol(data)) {
+    for (e in seq_len(ncol(data))) {
         gMedian[, e] <- median(data[, e])
     }
     colnames(gMedian) <- colnames(data)
@@ -337,7 +347,7 @@ calculating_grand_median(ctrlMedian_Fluo)
 head(ctrlFluo_GrMedian)
 
 
-calculating_individual_MAD <- function (data, col_names = NULL) {
+calculating_individual_MAD = function(data, col_names = NULL) {
     #Extract the MFI dfs from the FFs into a temp list
     FF_df_lst <- list()
     for (e in seq_along(data)) {
@@ -349,7 +359,7 @@ calculating_individual_MAD <- function (data, col_names = NULL) {
     MAD_lst <- list()
     for (e in seq_along(FF_df_lst)) {
         MAD_lst[[e]] <- df
-        for (i in 1:ncol(FF_df_lst[[1]])) {
+        for (i in seq_len(ncol(FF_df_lst[[1]]))) {
             mad <- mad(FF_df_lst[[e]][, i])
             MAD_lst[[e]][[i]] <- mad
         
@@ -363,16 +373,16 @@ calculating_individual_MAD <- function (data, col_names = NULL) {
         message("No colname was assigned.")
     } else {
         if (length(col_names) == 10) {
-            message("The intended colname vector is shorter than the number of colums in the new object.")
+            message("The intended colname vector is shorter than the number of columns in the new object.")
             message("I assume you intended to remove the last column: Time, and add the desired channel names.")
             message("Therefore, removing last column and adding proper colnames.")
             ctrlFluo_ind_MAD <- ctrlFluo_ind_MAD[, -ncol(ctrlFluo_ind_MAD)]
             colnames(ctrlFluo_ind_MAD) <- col_names
         } else if (length(col_names) == 11) {
             message("The intended colname vector does match the column number in the new df so I assume you want to keep the Time column")
-            message("Therfore I will just assign the new colnames")
+            message("Therefore I will just assign the new colnames")
         } else {
-            message("The intended colname does not match the number of columns (11 with Time 10 without Time) so please check the inteded colnames.")
+            message("The intended colname does not match the number of columns (11 with Time 10 without Time) so please check the intended colnames.")
             message("Nothing will be assigned.")
         }
                
@@ -384,11 +394,11 @@ calculating_individual_MAD <- function (data, col_names = NULL) {
 calculating_individual_MAD(ctrlFFs, col_names = df_colnames)
 print(ctrlFF_ind_MAD)
 
-calculating_total_MAD <- function (data) {
+calculating_total_MAD = function(data) {
     MAD <- numeric(length = ncol(data))    
     ctrlFluo_MAD <- data.frame(matrix(ncol = ncol(data), nrow = 1))
     
-    for (i in 1:ncol(data)) {
+    for (i in seq_len(ncol(data))) {
         MAD[i] <- mad(data[, i])
         ctrlFluo_MAD[, i] <- MAD[i]
         
@@ -400,10 +410,10 @@ calculating_total_MAD <- function (data) {
 calculating_total_MAD(ctrlFF_dfs_Fluo)
 print(ctrlFluo_total_MAD)
 
-calculating_MADM <- function (data) {
+calculating_MADM = function(data) {
     
     MADM <- data.frame(matrix(nrow = 1, ncol = ncol(data)))
-    for (i in 1:ncol(data)) {
+    for (i in seq_len(ncol(data))) {
         MADM[, i] <- mad(data[, i])
         
     }  
@@ -416,8 +426,8 @@ print(ctrlFluo_MADM)
 
 
 
-#visualizing the Median distribution and the MADM values
-#I reformat the means/medians df to better visualize fluorophore data
+# Visualizing the Median distribution and the MADM values
+# I reformat the means/medians df to better visualize fluorophore data
 ctrlMedian_Fluo <- dplyr::select(ctrlMedian_Fluo, EpCAM, PSMA)
 long_ctrlMed_F <- pivot_longer(ctrlMedian_Fluo, cols = c(EpCAM, PSMA),
                                names_to = "Channels", values_to = "MFI_medians")
