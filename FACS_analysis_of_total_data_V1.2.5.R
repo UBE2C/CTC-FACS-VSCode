@@ -88,7 +88,6 @@ path <- c("/Users/ramasz/Coding/Gabi_R")
 setwd(path)
 
 
-
 # Define the script version for output files, for easier version control, and make a dedicated folder in the WD
 define_version_create_folder = function(directory_name = "FACS") {
     #define the current script version
