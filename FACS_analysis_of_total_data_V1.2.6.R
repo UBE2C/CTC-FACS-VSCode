@@ -1153,14 +1153,21 @@ create_filtered_data_stats = function(cell_numbers_df) {
 filtered_cell_number_stats_df <- create_filtered_data_stats(filtered_cell_numbers_df)
 head(filtered_cell_number_stats_df)
 
+# Calculate and save the p-values for the cell number means per resp. group
+total_sorted_RvNR_means_p_val <- t.test(dplyr::filter(filtered_cell_numbers_df, responseGroup == "Responder")$totalCellNumber,
+    dplyr::filter(filtered_cell_numbers_df, responseGroup == "Nonresponder")$totalCellNumber)
+
+p_val_to_save <- capture.output(print(total_sorted_RvNR_means_p_val))
+readr::write_lines(x = p_val_to_save,
+    file = paste0(script_version, "/", "total_sorted_RvNR_means_p-value", "_", script_version, ".txt"))
+
 # Calculate and save the p-values for the total cell numbers per resp. group
-total_sorted_RvNR_p_val <- t.test(dplyr::filter(filtered_cell_numbers_df, responseGroup == "Responder")$totalCellNumber,
+total_sorted_RvNR_p_val <- wilcox.test(dplyr::filter(filtered_cell_numbers_df, responseGroup == "Responder")$totalCellNumber,
     dplyr::filter(filtered_cell_numbers_df, responseGroup == "Nonresponder")$totalCellNumber)
 
 p_val_to_save <- capture.output(print(total_sorted_RvNR_p_val))
 readr::write_lines(x = p_val_to_save,
     file = paste0(script_version, "/", "total_sorted_RvNR_p-value", "_", script_version, ".txt"))
-
 
 
 
@@ -1214,19 +1221,7 @@ raw_cell_numbers_per_resp_group_p <- ggplot(data = long_total_cell_number_df,
     scale_fill_tron(labels = c("Nonresponder", "Responder")) +
     #scale_fill_manual(values = c("#00BFC4", "#F8766D"), labels = c("Responder", "Nonresponder")) +
     labs(fill = "Response groups", x = expression("Response groups"), y = expression("Cell numbers")) +
-    #geom_segment(aes(x = "Double_positives", xend = "Double_positives", y = 60, yend = 60, group = resp.Group), 
-    #             col = "black", linewidth = 1, position = position_dodge(width = 0.9)) +
-    #geom_segment(aes(x = "EpCAM_positives", xend = "EpCAM_positives", y = 50, yend = 50, group = resp.Group), 
-    #             col = "black", linewidth = 1, position = position_dodge(width = 0.9)) +
-    #geom_segment(aes(x = "PSMA_positives", xend = "PSMA_positives", y = 40, yend = 40, group = resp.Group), 
-    #             col = "black", linewidth = 1, position = position_dodge(width = 0.9)) +
-    #geom_text(aes(x = "Double_positives", y = 62, label = "p-value: x"),
-    #          size = 4, color = "black", position = position_dodge(width = 0.9)) +
-    #geom_text(aes(x = "EpCAM_positives", y = 52, label = "p-value: x"),
-    #          size = 4, color = "black") +
-    #geom_text(aes(x = "PSMA_positives", y = 42, label = "p-value: x"),
-#          size = 4, color = "black") +
-ggtitle("Total cell numbers/response groups") +
+    ggtitle("Total cell numbers/response groups") +
     theme_classic() +
     theme(plot.title = element_text(hjust = 0.5), strip.background = element_blank(),
           strip.text = element_blank())
@@ -1240,10 +1235,34 @@ rm(raw_cell_numbers_per_resp_group_p)
 rm(nResp, nNonresp ,total_cell_number_df, long_total_cell_number_df)
 
 
-#Based on the minimum thresholds set here I will additionally label each sample to be single EpCAM positive (SE)
-#single PSMA positive (SP) or double positive (DP)
+# Bar chart showing each sample stacked on top as counts with t-test p val
+raw_cell_numbers_stacked_p <- ggplot(data = filtered_cell_numbers_df,
+                                        aes(x = responseGroup, y = totalCellNumber, fill = responseGroup)) +
+                                geom_bar(stat = "identity", show.legend = FALSE, position = "stack", color = "black") +
+                                #geom_text(aes(label = totalCellNumber), vjust = -0.5, position = position_stack(vjust = 0.5)) +
+                                geom_pwc(method = "t_test", label = "p = {p}", y.position = 260) + #this geom is for pairwise comparison and is amazing!
+                                #scale_y_continuous(limits = c(0, 250), breaks = seq(0, 250, 10)) +
+                                scale_x_discrete(labels = c("Nonresponder","Responder")) +
+                                scale_fill_tron(labels = c("Nonresponder", "Responder")) +
+                                #scale_fill_manual(values = c("#00BFC4", "#F8766D"), labels = c("Responder", "Nonresponder")) +
+                                labs(fill = "Response groups", x = expression("Response groups"), y = expression("Cell numbers")) +
+                                ggtitle("Total cell numbers/response groups") +
+                                theme_classic() +
+                                theme(plot.title = element_text(hjust = 0.5), strip.background = element_blank(),
+                                    strip.text = element_blank())
+print(raw_cell_numbers_stacked_p)
+
+ggsave(filename = paste0("Total_raw_cell_numbers_per_response_groups_stacked", "_", script_version, ".png"),
+       raw_cell_numbers_stacked_p,
+       device = "png", path = paste0(script_version, "/", "Plots"),
+       width = 3000, height = 1500, units = "px")
+rm(raw_cell_numbers_stacked_p)
+
+
+# Based on the minimum thresholds set here I will additionally label each sample to be single EpCAM positive (SE)
+# single PSMA positive (SP) or double positive (DP)
 niSortFilt$EvP_status <- NA
-for (e in 1:nrow(niSortFilt)) {
+for (e in seq_len(nrow(niSortFilt))) {
     if (log10(niSortFilt$EpCAM[e]) < -1) {
         niSortFilt$EvP_status[e] <- "SP"
     } else if (log10(niSortFilt$PSMA[e]) < -1.5) {
@@ -1253,7 +1272,8 @@ for (e in 1:nrow(niSortFilt)) {
     }
 }
 
-#Creating a plot to check if the EpCAM vs PSMA status assignment was successful
+
+# Creating a plot to check if the EpCAM vs PSMA status assignment was successful
 QC_EvP_status_p <- ggplot(niSortFilt,
                           aes(x = log10(EpCAM), y = log10(PSMA),
                               fill = EvP_status, color = EvP_status)) +
@@ -1264,36 +1284,45 @@ QC_EvP_status_p <- ggplot(niSortFilt,
     geom_vline(xintercept = -1, color = "orange", linetype = "dashed") +
     scale_fill_tron(labels = c("Double positive", "Single positive - EpCAM", "Single positive - PSMA")) +
     scale_color_tron(labels = c("Double positive", "Single positive - EpCAM", "Single positive - PSMA")) +
-    labs(x = expression("log"[10]*" EpCAM MFI"), y = expression("log"[10]*" PSMA MFI"),
+    labs(x = expression("log"[10] *" EpCAM MFI"), y = expression("log"[10]*" PSMA MFI"),
          fill = expression("Marker status"), color = expression("Marker status")) +
     ggtitle("EpCAM vs PSMA gating strategy - marker distribution") +
     theme_classic() +
     theme(plot.title = element_text(hjust = 0.5))
-    theme_classic()
 print(QC_EvP_status_p)
 
-ggsave(filename = paste0("Marker_status_scatterplot", "_", script_version, ".png"), QC_EvP_status_p,
-       device = "png", path = "Updated_analysis/Plots/",
+ggsave(filename = paste0("Marker_status_scatter_plot", "_", script_version, ".png"), QC_EvP_status_p,
+       device = "png", path = paste0(script_version, "/", "Plots"),
        width = 3000, height = 1500, units = "px")
 rm(QC_EvP_status_p)
 
 
-#Save the normalized, imputed and filtered dataframe
-write_csv(x = niSortFilt, file = paste0("Total_norm_imput_filt_indexDataframe", "_", script_version, ".csv"))
+# Save the normalized, imputed and filtered dataframe
+write_csv(x = niSortFilt, file = paste0(script_version, "/", "Total_norm_input_filt_indexDataframe", "_", script_version, ".csv"))
+
+################################################################   End Section  ##################################################################
 
 
 
 
-##Marker distribution analysis on both channles
 
 
-#I will transform the filtered dataframe to a long format
+#################################################################  Marker distribution analysis  ##################################################################
+                                                                #        on both channels        #
+
+
+
+
+## A quick exploration of the surface marker distribution
+
+
+# I will transform the filtered dataframe to a long format
 long_niSortFilt <- pivot_longer(niSortFilt, cols = c(EpCAM, PSMA),
                                 names_to = "Channels", values_to = "MFI_values")
 head(long_niSortFilt)
 
 
-#First, visualize the filtered dataframe in terms of total EpCAM and PSMA signal per response group
+# First, visualize the filtered dataframe in terms of total EpCAM and PSMA signal per response group
 EpCAM_and_PSMA_RvNR_p <- ggplot(data = long_niSortFilt,
                                 aes(fill = resp.Group, x = Channels, 
                                     y = log10(MFI_values))) +
@@ -1311,45 +1340,50 @@ EpCAM_and_PSMA_RvNR_p <- ggplot(data = long_niSortFilt,
 print(EpCAM_and_PSMA_RvNR_p)
 
 ggsave(filename = paste0("Total_MFI_values_per_response_group_facet_wrap", "_", script_version, ".png"), EpCAM_and_PSMA_RvNR_p,
-       device = "png", path = "Updated_analysis/Plots/",
+       device = "png", path = paste0(script_version, "/", "Plots"),
        width = 3000, height = 1500, units = "px")
 rm(EpCAM_and_PSMA_RvNR_p)
 
 
-#I will look at some basic stats for the response groups
-total_cell_number <- nrow(long_niSortFilt)
+
+
+## Creating summary stats for for the marker distribution data
+
+
+# I will look at some basic stats for the response groups
+total_cell_number <- nrow(niSortFilt)
 print(total_cell_number)
 
-long_niSortFilt_resp <- dplyr::filter(long_niSortFilt, resp.Group == "Responder")
+niSortFilt_resp <- dplyr::filter(niSortFilt, resp.Group == "Responder")
 
-resp_total_cell_number <- nrow(long_niSortFilt_resp)
+resp_total_cell_number <- nrow(niSortFilt_resp)
 print(resp_total_cell_number)
 
-resp_single_positive_EpCAM <- length(grep("SE", long_niSortFilt_resp$EvP_status))
+resp_single_positive_EpCAM <- length(grep("SE", niSortFilt_resp$EvP_status))
 print(resp_single_positive_EpCAM)
 
-resp_single_positive_PSMA <- length(grep("SP", long_niSortFilt_resp$EvP_status))
+resp_single_positive_PSMA <- length(grep("SP", niSortFilt_resp$EvP_status))
 print(resp_single_positive_PSMA)
 
-resp_double_positive <- length(grep("DP", long_niSortFilt_resp$EvP_status))
+resp_double_positive <- length(grep("DP", niSortFilt_resp$EvP_status))
 print(resp_double_positive)
 
 resp_cell_number_df <- data.frame("Total_cell_number" = resp_total_cell_number, "Double_positives" = resp_double_positive, "EpCAM_positives" = resp_single_positive_EpCAM,
                                   "PSMA_positives" = resp_single_positive_PSMA)
 rownames(resp_cell_number_df) <- c("Responder")
 
-long_niSortFilt_nonresp <- dplyr::filter(long_niSortFilt, resp.Group == "Nonresponder")
+niSortFilt_nonresp <- dplyr::filter(niSortFilt, resp.Group == "Nonresponder")
 
-nonresp_total_cell_number <- nrow(long_niSortFilt_nonresp)
+nonresp_total_cell_number <- nrow(niSortFilt_nonresp)
 print(nonresp_total_cell_number)
 
-nonresp_single_positive_EpCAM <- length(grep("SE", long_niSortFilt_nonresp$EvP_status))
+nonresp_single_positive_EpCAM <- length(grep("SE", niSortFilt_nonresp$EvP_status))
 print(nonresp_single_positive_EpCAM)
 
-nonresp_single_positive_PSMA <- length(grep("SP", long_niSortFilt_nonresp$EvP_status))
+nonresp_single_positive_PSMA <- length(grep("SP", niSortFilt_nonresp$EvP_status))
 print(nonresp_single_positive_PSMA)
 
-nonresp_double_positive <- length(grep("DP", long_niSortFilt_nonresp$EvP_status))
+nonresp_double_positive <- length(grep("DP", niSortFilt_nonresp$EvP_status))
 print(nonresp_double_positive)
 
 nonresp_cell_number_df <- data.frame("Total_cell_number" = nonresp_total_cell_number, "Double_positives" = nonresp_double_positive, "EpCAM_positives" = nonresp_single_positive_EpCAM,
@@ -1366,13 +1400,17 @@ unif_cell_numbers_per_marker_percent <- mutate(.data = unif_cell_numbers_per_mar
 print(unif_cell_numbers_per_marker_percent)
 
 
-#Saving the summary data
-write_csv(unif_cell_numbers_per_marker, file = paste0("Total_raw_cell_numbers_with_marker_dist", "_", script_version, ".csv"))
-write_csv(unif_cell_numbers_per_marker_percent, file = paste0("Total_raw_cell_number_percent_with_marker_dist.csv", "_", script_version, ".png"))
+# Saving the summary data
+write_csv(unif_cell_numbers_per_marker, file = paste0(script_version, "/", "Total_raw_cell_numbers_with_marker_dist", "_", script_version, ".csv"))
+write_csv(unif_cell_numbers_per_marker_percent, file = paste0(script_version, "/", "Total_raw_cell_number_percent_with_marker_dist.csv", "_", script_version, ".png"))
 
 
 
-#Visualizing the raw cell numbers based on marker distribution (thx bing!)
+
+## Visualizing the basic marker distribution data
+
+
+# Visualizing the raw cell numbers based on marker distribution (thx bing!)
 unif_cell_numbers_per_marker <- mutate(.data = unif_cell_numbers_per_marker, resp.Group = c("Responder", "Nonresponder"))
 unif_cell_numbers_per_marker <- dplyr::select(.data = unif_cell_numbers_per_marker,
                                               Double_positives, EpCAM_positives, PSMA_positives, resp.Group)
@@ -1394,32 +1432,24 @@ raw_cell_numbers_per_marker_p <- ggplot(data = long_unif_cell_numbers_per_marker
     scale_fill_tron(labels = c("Nonresponder", "Responder")) +
     #scale_fill_manual(values = c("#00BFC4", "#F8766D"), labels = c("Responder", "Nonresponder")) +
     labs(fill = "Response groups", x = expression("Marker status"), y = expression("Cell number percentages")) +
-    #geom_segment(aes(x = "Double_positives", xend = "Double_positives", y = 60, yend = 60, group = resp.Group), 
-    #             col = "black", linewidth = 1, position = position_dodge(width = 0.9)) +
-    #geom_segment(aes(x = "EpCAM_positives", xend = "EpCAM_positives", y = 50, yend = 50, group = resp.Group), 
-    #             col = "black", linewidth = 1, position = position_dodge(width = 0.9)) +
-    #geom_segment(aes(x = "PSMA_positives", xend = "PSMA_positives", y = 40, yend = 40, group = resp.Group), 
-    #             col = "black", linewidth = 1, position = position_dodge(width = 0.9)) +
-    #geom_text(aes(x = "Double_positives", y = 62, label = "p-value: x"),
-    #          size = 4, color = "black", position = position_dodge(width = 0.9)) +
-    #geom_text(aes(x = "EpCAM_positives", y = 52, label = "p-value: x"),
-    #          size = 4, color = "black") +
-    #geom_text(aes(x = "PSMA_positives", y = 42, label = "p-value: x"),
-#          size = 4, color = "black") +
-ggtitle("Total cell numbers/marker groups") +
+    ggtitle("Total cell numbers/marker groups") +
     theme_classic() +
     theme(plot.title = element_text(hjust = 0.5), strip.background = element_blank(),
           strip.text = element_blank())
 print(raw_cell_numbers_per_marker_p)
 
 ggsave(filename = paste0("Total_raw_cell_numbers_per_staining", "_", script_version, ".png"), raw_cell_numbers_per_marker_p,
-       device = "png", path = "Updated_analysis/Plots/",
+       device = "png", path = paste0(script_version, "/", "Plots"),
        width = 3000, height = 1500, units = "px")
 rm(raw_cell_numbers_per_marker_p)
 rm(long_unif_cell_numbers_per_marker)
 
 
-#Visualizing cell numbers based on marker distribution (thx bing!)
+
+## A more in-depth visualization of the marker distribution data
+
+
+# Visualizing cell numbers based on marker distribution (thx bing!)
 unif_cell_numbers_per_marker_percent <- dplyr::select(.data = unif_cell_numbers_per_marker_percent,
                                                       Double_positives, EpCAM_positives, PSMA_positives, resp.Group)
 long_unif_cell_numbers_per_marker_percent <- pivot_longer(unif_cell_numbers_per_marker_percent, cols = c(Double_positives, EpCAM_positives, PSMA_positives),
@@ -1439,35 +1469,24 @@ marker_percentages_p <- ggplot(data = long_unif_cell_numbers_per_marker_percent,
     scale_fill_tron(labels = c("Nonresponder", "Responder")) +
     labs(fill = "Response groups", x = "Marker status", y = "Cell number percentages") +
     #scale_fill_manual(values = c("#00BFC4", "#F8766D"), labels = c("Responder", "Nonresponder")) +
-    #geom_segment(aes(x = "Double_positives", xend = "Double_positives", y = 60, yend = 60, group = resp.Group), 
-    #             col = "black", linewidth = 1, position = position_dodge(width = 0.9)) +
-    #geom_segment(aes(x = "EpCAM_positives", xend = "EpCAM_positives", y = 50, yend = 50, group = resp.Group), 
-    #             col = "black", linewidth = 1, position = position_dodge(width = 0.9)) +
-    #geom_segment(aes(x = "PSMA_positives", xend = "PSMA_positives", y = 40, yend = 40, group = resp.Group), 
-    #             col = "black", linewidth = 1, position = position_dodge(width = 0.9)) +
-    #geom_text(aes(x = "Double_positives", y = 62, label = "p-value: x"),
-    #          size = 4, color = "black", position = position_dodge(width = 0.9)) +
-    #geom_text(aes(x = "EpCAM_positives", y = 52, label = "p-value: x"),
-    #          size = 4, color = "black") +
-#geom_text(aes(x = "PSMA_positives", y = 42, label = "p-value: x"),
-#          size = 4, color = "black") +
-geom_text(aes(label = round(Percentages, 2)), vjust = -0.5, position = position_dodge2(0.9)) +
+    geom_text(aes(label = round(Percentages, 2)), vjust = -0.5, position = position_dodge2(0.9)) +
     ggtitle("Total cell numbers/marker groups") +
     theme_classic() +
     theme(plot.title = element_text(hjust = 0.5))
 print(marker_percentages_p)
 
 ggsave(filename = paste0("Total_cell_numbers_percenteges_per_staining", "_", script_version, ".png"), marker_percentages_p,
-       device = "png", path = "Updated_analysis/Plots/",
+       device = "png", path = paste0(script_version, "/", "Plots"),
        width = 3000, height = 1500, units = "px")
 rm(marker_percentages_p)
 rm(long_unif_cell_numbers_per_marker_percent)
 
 
 
-#I will look at the marker distribution between response groups. First I will create a responder specific df
-long_niSortFilt_resp <- dplyr::filter(long_niSortFilt, resp.Group == "Responder")
-
+# I will look at the marker distribution between response groups. First I will create a responder specific df
+niSortFilt_resp <- dplyr::filter(niSortFilt, resp.Group == "Responder")
+long_niSortFilt_resp <- tidyr::pivot_longer(data = niSortFilt_resp,
+    cols = c(EpCAM, PSMA), names_to = "Channels", values_to = "MFI_values")
 
 #I will visualize the marker distribution in the responder data
 marker_status_resp_p <- ggplot(long_niSortFilt_resp,
@@ -1480,24 +1499,24 @@ marker_status_resp_p <- ggplot(long_niSortFilt_resp,
     #geom_segment(aes(x = "Nonresponder", xend = "Responder", y = 1.5, yend = 1.5), col = "black") +
     #stat_compare_means(label.y = 2, label.x = 1.4) +
     #geom_dotplot(binaxis = "y", stackdir = "center", binwidth = 0.05, alpha = 0.5) +
-    labs(x = "Marker status", y = expression("Total log"[10]*" MFI values"), color = "Markers") +
+    labs(x = "Marker status", y = expression("Total log"[10] *" MFI values"), color = "Markers") +
     scale_x_discrete(labels = c("DP" = "Double positive", "SE" = "EpCAM positive", "SP" = "PSMA positive")) +
-    ggtitle("Marker distribution in Repsonders") +
+    ggtitle("Marker distribution in Responders") +
     theme_classic() +
     theme(plot.title = element_text(hjust = 0.5))
 print(marker_status_resp_p)
 
 ggsave(filename = paste0("Marker_status_on_responders", "_", script_version, ".png"), marker_status_resp_p,
-       device = "png", path = "Updated_analysis/Plots/",
+       device = "png", path = paste0(script_version, "/", "Plots"),
        width = 3000, height = 1500, units = "px")
 rm(marker_status_resp_p)
 
 
-#I will look at the marker distribution between response groups. First I will create a nonresponder specific df
+# I will look at the marker distribution between response groups. First I will create a nonresponder specific df
 long_niSortFilt_nonresp <- dplyr::filter(long_niSortFilt, resp.Group == "Nonresponder")
 
 
-#I will visualize the marker distribution in the nonesponder data
+# I will visualize the marker distribution in the nonesponder data
 marker_status_nonresp_p <- ggplot(long_niSortFilt_nonresp,
                                   aes(x = EvP_status, y = log10(MFI_values), fill = EvP_status)) +
     geom_boxplot(show.legend = FALSE) +
@@ -1508,20 +1527,20 @@ marker_status_nonresp_p <- ggplot(long_niSortFilt_nonresp,
     #geom_segment(aes(x = "Nonresponder", xend = "Responder", y = 1.5, yend = 1.5), col = "black") +
     #stat_compare_means(label.y = 2, label.x = 1.4) +
     #geom_dotplot(binaxis = "y", stackdir = "center", binwidth = 0.05, alpha = 0.5) +
-    labs(x = "Marker status", y = expression("Total log"[10]*" MFI values"), color = "Markers") +
+    labs(x = "Marker status", y = expression("Total log"[10] *" MFI values"), color = "Markers") +
     scale_x_discrete(labels = c("DP" = "Double positive", "SE" = "EpCAM positive", "SP" = "PSMA positive")) +
-    ggtitle("Marker distribution in Nonrepsonders") +
+    ggtitle("Marker distribution in Nonresponders") +
     theme_classic() +
     theme(plot.title = element_text(hjust = 0.5))
 print(marker_status_nonresp_p)
 
 ggsave(filename = paste0("Marker_status_on_nonresponders", "_", script_version, ".png"), marker_status_nonresp_p,
-       device = "png", path = "Updated_analysis/Plots/",
+       device = "png", path = paste0(script_version, "/", "Plots"),
        width = 3000, height = 1500, units = "px")
 rm(marker_status_nonresp_p)
 
 
-#I will visualize the two groups together
+# I will visualize the two groups together
 marker_status_unif_p <- ggplot(long_niSortFilt,
                                aes(x = EvP_status, y = log10(MFI_values), fill = resp.Group)) +
     geom_boxplot(show.legend = TRUE, position = position_dodge(width = 1, preserve = "single")) +
@@ -1533,25 +1552,35 @@ marker_status_unif_p <- ggplot(long_niSortFilt,
     #geom_segment(aes(x = "Nonresponder", xend = "Responder", y = 1.5, yend = 1.5), col = "black") +
     #stat_compare_means(label.y = 2, label.x = 1.4) +
     #geom_dotplot(binaxis = "y", stackdir = "center", binwidth = 0.05, alpha = 0.5) +
-    labs(x = "Marker status", y = expression("Total log"[10]*" MFI values"), fill = "Response groups") +
+    labs(x = "Marker status", y = expression("Total log"[10] *" MFI values"), fill = "Response groups") +
     scale_x_discrete(labels = c("DP" = "Double positive", "SE" = "EpCAM positive", "SP" = "PSMA positive")) +
     ggtitle("Total marker distribution") +
     theme_classic() +
     theme(plot.title = element_text(hjust = 0.5))
 print(marker_status_unif_p)
 
-ggsave(filename = paste0("Marker_status_on_both_responsegroups", "_", script_version, ".png"), marker_status_unif_p,
-       device = "png", path = "Updated_analysis/Plots/",
+ggsave(filename = paste0("Marker_status_on_both_response_groups", "_", script_version, ".png"), marker_status_unif_p,
+       device = "png", path = paste0(script_version, "/", "Plots"),
        width = 3000, height = 1500, units = "px")
 rm(marker_status_unif_p)
 
+################################################################   End Section  ##################################################################
 
 
 
-##Deeper channel and statistical analysis
 
 
-#I create an EpCAM only df
+
+#################################################################  A more in-depth channel  ##################################################################
+                                                                # and statistical analysis  #
+
+
+
+
+## Analyzing the EpCAM channel
+
+
+# I create an EpCAM only df
 long_niSortFilt_EpCAM <- dplyr::filter(long_niSortFilt, Channels == "EpCAM")
 
 
