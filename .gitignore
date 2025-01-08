@@ -1,0 +1,9 @@
+# Ignore directories
+*/
+
+#Ignore macOS setting files
+*.DS_Store
+
+# Ignore plots
+*.png
+*.svg
