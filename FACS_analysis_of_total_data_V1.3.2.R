@@ -527,34 +527,41 @@ df_colnames, channel_names)
 ## Preparing the real samples for normalization
 
 
-# I will subset the sort list to an index sort list iSorts
-iSorts <- SortList[grepl("INX", names(SortList))]
+# I will subset the sort list to an index sort list iSorts, using the embedded INDEX labeling, found in the index-sorted .fcs files
+indexed <- vector(mode = "logical")
+for (i in seq_along(SortList)) {
+  indexed[i] <- any(grepl("INDEX", names(do.call(rbind, flowCore::keyword(SortList[[i]]))[, 1])))
+}
+summary(indexed)
+
+iSorts <- SortList[indexed]
 
 #I will correct some indexing mistakes in iSorts
 grep("INX_ALM80C8-004-1", names(iSorts))
-names(iSorts)[[18]]
 grep("INX_ALM76C6-003-1", names(iSorts))
 names(iSorts)[[16]]
 names(iSorts)[[17]]
+names(iSorts)[[18]]
 
-keyword(iSorts[[16]])$"$FIL"
-keyword(iSorts[[17]])$"$FIL"
-keyword(iSorts[[18]])$"$FIL"
+flowCore::keyword(iSorts[[16]])$"$FIL"
+flowCore::keyword(iSorts[[17]])$"$FIL"
+flowCore::keyword(iSorts[[18]])$"$FIL"
 
-keyword(iSorts[[16]])$"$FIL" <- "Specimen_001_INX_ALM76C6-003-1_strip_1_001_006.fcs"
+names(iSorts)[[16]] <- "2022-04-13 Specimen_001_INX_ALM76C6-003-1_strip_1_001_006.fcs"
+flowCore::keyword(iSorts[[16]])$"$FIL" <- "Specimen_001_INX_ALM76C6-003-1_strip_1_001_006.fcs"
 
 names(iSorts)[[18]] <- "2022-04-13 Specimen_001_INX_ALM80C8-004-2 strip 1_001_005.fcs"
-keyword(iSorts[[18]])$"$FIL" <- "Specimen_001_INX_ALM80C8-004-2 strip 1_001_005.fcs"
+flowCore::keyword(iSorts[[18]])$"$FIL" <- "Specimen_001_INX_ALM80C8-004-2 strip 1_001_005.fcs"
 
 grep("ALM83C8", names(iSorts))
-names(iSorts)[[48]]
-keyword(iSorts[[48]])$"$FIL" <- "Specimen_001_INX_ALM83C8-001-3_str_1_001_005.fcs"
+names(iSorts)[[48]] <- "2022-04-13 Specimen_001_INX_ALM83C8-001-3_str_1_001_005.fcs"
+flowCore::keyword(iSorts[[48]])$"$FIL" <- "Specimen_001_INX_ALM83C8-001-3_str_1_001_005.fcs"
 
 grep("LM78C7-005-1", names(iSorts))
-names(iSorts)[[153]]
-names(iSorts)[[154]]
-keyword(iSorts[[153]])$"$FIL" <- "Specimen_001_INX_ALM78C7-005-1_001_005.fcs"
-keyword(iSorts[[154]])$"$FIL" <- "Specimen_001_INX_ALM78C7-005-1_002_006.fcs"
+names(iSorts)[[155]] <- "2022-04-13 Specimen_001_INX_ALM78C7-005-1_001_005.fcs"
+names(iSorts)[[156]] <- "2022-04-13 Specimen_001_INX_ALM78C7-005-1_002_006.fcs"
+flowCore::keyword(iSorts[[155]])$"$FIL" <- "Specimen_001_INX_ALM78C7-005-1_001_005.fcs"
+flowCore::keyword(iSorts[[156]])$"$FIL" <- "Specimen_001_INX_ALM78C7-005-1_002_006.fcs"
 
 
 # write here a for loop, which will exchange the sample names to the flow frame specimen names
@@ -573,7 +580,7 @@ iSorts <- iSorts[!grepl("leukocyte", names(iSorts))]
 # This function will correct the incorrect sample names in the main FlowFrames (.fcs)
 fix_sample_name_in_FFs = function(data, incorrect_name_pattern) {
     # first we list out the previously corrected sample names
-    specimen_names <- list()
+    specimen_names <- vector(mode = "list", length = length(data))
     for (e in seq_along(data)) {
         specimen_names[[e]] <- stringr::str_extract(flowCore::keyword(data[[e]])$FIL, "Specimen*.*") 
     }
@@ -601,7 +608,7 @@ iSorts <- fix_sample_name_in_FFs(iSorts, "leukocyte")
 # than the colname order of the index flow frames so I made this function
 # to check if all the index flowframes have the same colname order or not
 check_colnames = function(FFs, colname_order) {
-    tmp <- c()
+    tmp <- vector(mode = "character", length = length(FFs))
     for (e in seq_along(FFs)) {
         if (length(summary(unique(colnames(FFs[[e]]@exprs) == colname_order))) == 2) {
             tmp[e] <- c("it is fine")
@@ -630,9 +637,9 @@ colnames(ctrlFFs[[1]]) == colnames(iSorts[[1]])
 
 # This snippet allows the extraction of index sort tables from the index FFs and to 
 # unify them in one main df
-iSort_dfs <- list()
+iSort_dfs <- vector(mode = "list", length = length(iSorts))
 for (e in seq_along(iSorts)) {
-    iSort_dfs[[e]] <- getIndexSort(iSorts[[e]])
+    iSort_dfs[[e]] <- flowCore::getIndexSort(iSorts[[e]])
 }
 names(iSort_dfs) <- names(iSorts)
 
@@ -643,7 +650,7 @@ names(iSort_dfs) <- names(iSorts)
 # pattern with the correct name
 correct_FACS_exp_names = function(data, incorrect_name_pattern) {
     # first, create a list with the sample names found in the list of experiments/samples
-    df_name_lst <- list()
+    df_name_lst <- vector(mode = "list", length = length(data))
     for (e in seq_along(data)){
         df_name_lst[[e]] <- data[[e]]$name
     }
@@ -669,7 +676,7 @@ correct_FACS_exp_names = function(data, incorrect_name_pattern) {
         # and stores them in a new list
         message("Incorrect sample names found based on the given pattern. They will be replaced")
         
-        df_names_replace_with <- list()
+        df_names_replace_with <- vector(mode = "list", length = length(df_name_lst))
         for (e in seq_along(df_name_lst)) {
             df_names_replace_with[[e]] <- stringr::str_extract(names(df_name_lst[e]), "Specimen*.*")
         }
