@@ -538,30 +538,32 @@ iSorts <- SortList[indexed]
 
 #I will correct some indexing mistakes in iSorts
 grep("INX_ALM80C8-004-1", names(iSorts))
-grep("INX_ALM76C6-003-1", names(iSorts))
-names(iSorts)[[16]]
 names(iSorts)[[17]]
 names(iSorts)[[18]]
 
-flowCore::keyword(iSorts[[16]])$"$FIL"
 flowCore::keyword(iSorts[[17]])$"$FIL"
 flowCore::keyword(iSorts[[18]])$"$FIL"
 
-names(iSorts)[[16]] <- "2022-04-13 Specimen_001_INX_ALM76C6-003-1_strip_1_001_006.fcs"
+names(iSorts)[[18]] <- "2022-04-13 Specimen_001_INX_ALM80C8-004-2 strip 1_001_002.fcs"
+flowCore::keyword(iSorts[[18]])$"$FIL" <- "Specimen_001_INX_ALM80C8-004-2 strip 1_001_002.fcs"
+
+grep("INX_ALM76C6-003-1", names(iSorts))
+names(iSorts)[[16]]
+
+flowCore::keyword(iSorts[[16]])$"$FIL"
 flowCore::keyword(iSorts[[16]])$"$FIL" <- "Specimen_001_INX_ALM76C6-003-1_strip_1_001_006.fcs"
 
-names(iSorts)[[18]] <- "2022-04-13 Specimen_001_INX_ALM80C8-004-2 strip 1_001_005.fcs"
-flowCore::keyword(iSorts[[18]])$"$FIL" <- "Specimen_001_INX_ALM80C8-004-2 strip 1_001_005.fcs"
-
 grep("ALM83C8", names(iSorts))
-names(iSorts)[[48]] <- "2022-04-13 Specimen_001_INX_ALM83C8-001-3_str_1_001_005.fcs"
+names(iSorts)[[48]]
 flowCore::keyword(iSorts[[48]])$"$FIL" <- "Specimen_001_INX_ALM83C8-001-3_str_1_001_005.fcs"
 
 grep("LM78C7-005-1", names(iSorts))
-names(iSorts)[[155]] <- "2022-04-13 Specimen_001_INX_ALM78C7-005-1_001_005.fcs"
-names(iSorts)[[156]] <- "2022-04-13 Specimen_001_INX_ALM78C7-005-1_002_006.fcs"
-flowCore::keyword(iSorts[[155]])$"$FIL" <- "Specimen_001_INX_ALM78C7-005-1_001_005.fcs"
-flowCore::keyword(iSorts[[156]])$"$FIL" <- "Specimen_001_INX_ALM78C7-005-1_002_006.fcs"
+names(iSorts)[[155]] 
+names(iSorts)[[156]]
+flowCore::keyword(iSorts[[155]])$"$FIL"
+flowCore::keyword(iSorts[[156]])$"$FIL"
+flowCore::keyword(iSorts[[155]])$"$FIL" <- "Specimen_001_INX_(A)LM78C7-005-1_001_005.fcs"
+flowCore::keyword(iSorts[[156]])$"$FIL" <- "Specimen_001_INX_(A)LM78C7-005-1_002_006.fcs"
 
 
 # write here a for loop, which will exchange the sample names to the flow frame specimen names
@@ -578,11 +580,12 @@ iSorts <- iSorts[!grepl("leukocyte", names(iSorts))]
 
 
 # This function will correct the incorrect sample names in the main FlowFrames (.fcs)
+
 fix_sample_name_in_FFs = function(data, incorrect_name_pattern) {
     # first we list out the previously corrected sample names
     specimen_names <- vector(mode = "list", length = length(data))
     for (e in seq_along(data)) {
-        specimen_names[[e]] <- stringr::str_extract(flowCore::keyword(data[[e]])$FIL, "Specimen*.*") 
+        specimen_names[[e]] <- stringr::str_extract(flowCore::keyword(data[[e]])$"$FIL", "Specimen*.*") 
     }
     
     # then this loop and if statement will check if the sample name is incorrect or not
@@ -641,7 +644,16 @@ iSort_dfs <- vector(mode = "list", length = length(iSorts))
 for (e in seq_along(iSorts)) {
     iSort_dfs[[e]] <- flowCore::getIndexSort(iSorts[[e]])
 }
-names(iSort_dfs) <- names(iSorts)
+
+
+# This loop pulls the corrected sort names from the FFs
+correct_sort_names <- vector(mode = "character", length = length(iSorts))
+for (i in seq_along(iSorts)) {
+  correct_sort_names[i] <- flowCore::keyword(iSorts[[i]])$"$FIL"
+}
+
+
+names(iSort_dfs) <- correct_sort_names
 
 
 # Before moving on and combining the dfs, I realized there is a mistake with the tube names in the case of
@@ -718,9 +730,14 @@ rm(iSort_colnames)
 ## Here I'm gathering additional data for my iSort_df to make it more comprehensive
 
 # This gets the sort dates
-iDates <- str_extract(names(iSorts), START %R% one_or_more(ALNUM) %R%
-                          "-" %R% one_or_more(ALNUM) %R%
-                          "-" %R% one_or_more(ALNUM))
+# This loop pulls the Dates from the FFs
+iDates <- vector(mode = "character", length = length(iSorts))
+for (i in seq_along(iSorts)) {
+  FF_dates <- flowCore::keyword(iSorts[[i]])$"$DATE"
+  conv_date <- as.Date(FF_dates, format = "%d-%b-%Y")
+  iDates[i] <- format(conv_date, format = "%Y-%m-%d") 
+}
+rm(FF_dates, conv_date)
 
 
 # This snippet subtracts the sample IDs 
@@ -747,7 +764,7 @@ sampleID <- str_remove(sampleID, "INX_")
 
 # This part loads the file names separated by response group so the response can be subtracted
 # Non-responders
-nonResp <- list.files(path = paste0(path, "/", "FACS_fcs_csv_files", "/", "Non-responder indexes"))
+nonResp <- list.files(path = paste0(path, "/", "Classification_data", "/", "Non-responder indexes"))
 nonResp <- nonResp[str_detect(nonResp, "INX")]
 nonResp <- str_extract(nonResp,
                        "INX_" %R% one_or_more(PUNCT) %R% one_or_more(ALNUM) %R%
@@ -766,7 +783,7 @@ nonResp <- unique(nonResp)
 
 
 # Responders
-Resp <- list.files(path = paste0(path, "/", "FACS_fcs_csv_files", "/", "Responder indexes"))
+Resp <- list.files(path = paste0(path, "/", "Classification_data", "/", "Responder indexes"))
 Resp <- Resp[str_detect(Resp, "INX")]
 Resp <- str_extract(Resp,
                     "INX_" %R% one_or_more(PUNCT) %R% one_or_more(ALNUM) %R%
@@ -785,7 +802,7 @@ Resp <- unique(Resp)
 
 
 # These samples are not in the final seq data, therefore I will not use them for the FACS analysis
-Unkn <- list.files(path = paste0(path, "/", "FACS_fcs_csv_files", "/", "Unclassified indexes"))
+Unkn <- list.files(path = paste0(path, "/", "Classification_data", "/", "Unclassified indexes"))
 Unkn <- Unkn[str_detect(Unkn, "INX")]
 Unkn <- str_extract(Unkn,
                     "INX_" %R% one_or_more(PUNCT) %R% one_or_more(ALNUM) %R%
@@ -824,7 +841,7 @@ fixed_ID <- str_replace_all(fixed_ID, pattern = "LM86C6-005-2",
 #fixed_ID <- str_replace_all(fixed_ID, pattern = "LM78C7-005-1",
 #                            replacement = "ALM78C7-005-1")
 
-resp.Group <- c()
+resp.Group <- vector(mode = "character", length = length(fixed_ID))
 for (e in seq_along(fixed_ID)){
     if (fixed_ID[e] %in% Resp == TRUE) {
         resp.Group[e] <- c("Responder")
@@ -839,31 +856,30 @@ for (e in seq_along(fixed_ID)){
 
 
 # Get the matching dates
-# NOTE: some samples have (A) in their name which causes issues with the pattern matching,
-# as brackets are special characters which has to be escaped. Therefore the following loop
-# will produce NAs where the bracketed sample names are located.
-# This split loop is much more efficient at doing the same thing as the main loop
+# NOTE: iDates do not work here, as there are multiple samples in one list element, so i need the matching
+# number of dates. This loop will pull the the main sort dates and the matched sample name and palces them in
+# df for further use.
 dates_df <- data.frame(matrix(ncol = 2, nrow = length(iSorts)))
 colnames(dates_df) <- c("Sample", "Date")
 for (e in seq_along(iSorts)) {
-    dates_df[e, 1] <- keyword(iSorts[[e]])$"$FIL" # this is a special inherent function to FF objects
-    dates_df[e, 2] <- str_extract(names(iSorts)[e], START %R% one_or_more(ALNUM) %R%
+    dates_df[e, 1] <- flowCore::keyword(iSorts[[e]])$"$FIL" # this is a special inherent function to FF objects
+    dates_df[e, 2] <- stringr::str_extract(names(iSorts)[e], START %R% one_or_more(ALNUM) %R%
                                       "-" %R% one_or_more(ALNUM) %R%
                                       "-" %R% one_or_more(ALNUM))
 }
 
 
 # This loop will match the dates of the samples
-Dates <- c()
+Dates <- vector(mode = "character", length = nrow(iSort_df))
 for (e in seq_along(iSort_df$Name)) {
-    Dates[e] <- dates_df$Date[iSort_df$Name[e] == dates_df$Sample]
+    Dates[e] <- dates_df$Date[dates_df$Sample %in% iSort_df$Name[e]]
 }
 # NOTE: don't use grep, grepl or str_detect, because for some reason it does not work well here
 
 
-# I will fix the sample names in the Name column on the iSort_df 
-#iSort_df2 <- iSort_df
-#iSort_df2$Name <- str_replace_all(iSort_df2$Name, "\\(A\\)", "A")
+
+# I will fix the sample names in the Name column in the iSort_df by removing the parenthesis 
+iSort_df$Name <- str_replace_all(iSort_df2$Name, "\\(A\\)", "A")
 
 
 # I believe I have the necessary metadata to unify everything in the cleaned up
