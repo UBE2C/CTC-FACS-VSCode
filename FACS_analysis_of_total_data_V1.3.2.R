@@ -537,74 +537,114 @@ summary(indexed)
 iSorts <- SortList[indexed]
 
 #I will correct some indexing mistakes in iSorts
+
+#Sample batch 1 - check
+grep("INX_ALM76C6-003-1", names(iSorts))
+names(iSorts)[[16]] 
+flowCore::keyword(iSorts[[16]])$"$FIL" 
 grep("INX_ALM80C8-004-1", names(iSorts))
 names(iSorts)[[17]]
-names(iSorts)[[18]]
-
+names(iSorts)[[18]] 
 flowCore::keyword(iSorts[[17]])$"$FIL"
-flowCore::keyword(iSorts[[18]])$"$FIL"
+flowCore::keyword(iSorts[[18]])$"$FIL" 
 
-names(iSorts)[[18]] <- "2022-04-13 Specimen_001_INX_ALM80C8-004-2 strip 1_001_002.fcs"
-flowCore::keyword(iSorts[[18]])$"$FIL" <- "Specimen_001_INX_ALM80C8-004-2 strip 1_001_002.fcs"
+grep("2022-04-13", names(iSorts))
+for (i in c(13:21)) {
+  print(paste0(i, " ", keyword(iSorts[[i]])$"$DATE", " ", keyword(iSorts[[i]])$"$FIL", " ", keyword(iSorts[[i]])$"$BTIM"))
+}
 
-grep("INX_ALM76C6-003-1", names(iSorts))
-names(iSorts)[[16]]
+#Sample batch 1 - correction
+flowCore::keyword(iSorts[[16]])$"$FIL" <- "Specimen_001_INX_ALM76C6-003-1_strip_1_001_007.fcs"
+flowCore::keyword(iSorts[[17]])$"$FIL" # Correct
+flowCore::keyword(iSorts[[18]])$"$FIL" <- "Specimen_001_INX_ALM80C8-004-2 strip 1_002_006.fcs"
 
-flowCore::keyword(iSorts[[16]])$"$FIL"
-flowCore::keyword(iSorts[[16]])$"$FIL" <- "Specimen_001_INX_ALM76C6-003-1_strip_1_001_006.fcs"
-
+#Sample batch 2 - check
 grep("ALM83C8", names(iSorts))
 names(iSorts)[[48]]
+flowCore::keyword(iSorts[[48]])$"$FIL"
+
+for (i in c(47:59)) {
+  print(paste0(i, " ", keyword(iSorts[[i]])$"$DATE", " ", keyword(iSorts[[i]])$"$FIL", " ", keyword(iSorts[[i]])$"$BTIM"))
+}
+
+#Sample batch 2 - correction
 flowCore::keyword(iSorts[[48]])$"$FIL" <- "Specimen_001_INX_ALM83C8-001-3_str_1_001_005.fcs"
 
+#Sample batch 3 - check
 grep("LM78C7-005-1", names(iSorts))
 names(iSorts)[[155]] 
 names(iSorts)[[156]]
 flowCore::keyword(iSorts[[155]])$"$FIL"
 flowCore::keyword(iSorts[[156]])$"$FIL"
+
+grep("2022-05-24", names(iSorts))
+for (i in c(153:156)) {
+  print(paste0(i, " ", keyword(iSorts[[i]])$"$DATE", " ", keyword(iSorts[[i]])$"$FIL", " ", keyword(iSorts[[i]])$"$BTIM"))
+}
+
+#Sample batch 3 - correction
 flowCore::keyword(iSorts[[155]])$"$FIL" <- "Specimen_001_INX_(A)LM78C7-005-1_001_005.fcs"
 flowCore::keyword(iSorts[[156]])$"$FIL" <- "Specimen_001_INX_(A)LM78C7-005-1_002_006.fcs"
 
+#Sample batch 4 - check
+grep("leukocyte", names(iSorts))
+names(iSorts)[grep("leukocyte", names(iSorts))]
 
-# write here a for loop, which will exchange the sample names to the flow frame specimen names
-#for(e in seq_along(iSorts)) {
-#    new_spec_names <- c()
-#    new_spec_names[e] <- str_extract(names(iSorts)[e], "Specimen*.*")
-#    print(new_spec_names)
-#}
+for (i in c(21:36)) {
+  print(paste0(i, " ", keyword(iSorts[[i]])$"$DATE", " ", keyword(iSorts[[i]])$"$FIL", " ", keyword(iSorts[[i]])$"$BTIM"))
+}
 
+#Sample batch 4 - correction
+flowCore::keyword(iSorts[[22]])$"$FIL" <- "Specimen_001_INX_ALM76C6-003-2_str1_001.fcs"
+flowCore::keyword(iSorts[[23]])$"$FIL" <- "Specimen_001_INX_ALM76C6-003-2_str2_002.fcs"
+flowCore::keyword(iSorts[[24]])$"$FIL" <- "Specimen_001_INX_ALM66C5-008-1_str1_001.fcs"
+flowCore::keyword(iSorts[[25]])$"$FIL" <- "Specimen_001_INX_ALM66C5-008-1_str2_002.fcs"
+flowCore::keyword(iSorts[[26]])$"$FIL" <- "Specimen_001_INX_ALM66C5-008-1_str3_003.fcs"
+flowCore::keyword(iSorts[[27]])$"$FIL" <- "Specimen_001_INX_ALM66C5-008-1_str4_004.fcs"
+flowCore::keyword(iSorts[[28]])$"$FIL" <- "Specimen_001_INX_ALM66C5-008-1_str5_005.fcs"
+flowCore::keyword(iSorts[[29]])$"$FIL" <- "Specimen_001_INX_ALM66C5-008-1_str6_006.fcs"
+flowCore::keyword(iSorts[[30]])$"$FIL" <- "Specimen_001_INX_ALM66C5-008-1_str7_007.fcs"
+flowCore::keyword(iSorts[[31]])$"$FIL" <- "Specimen_001_INX_ALM66C5-008-1_str8_008.fcs"
+flowCore::keyword(iSorts[[32]])$"$FIL" <- "Specimen_001_INX_ALM66C5-008-1_str9_009.fcs"
+flowCore::keyword(iSorts[[33]])$"$FIL" <- "Specimen_001_INX_ALM66C5-008-1_str10_010.fcs"
+flowCore::keyword(iSorts[[34]])$"$FIL" <- "Specimen_001_INX_ALM66C5-008-1_str11_011.fcs"
+flowCore::keyword(iSorts[[35]])$"$FIL" <- "Specimen_001_INX_ALM66C5-008-1_str12_012.fcs"
+flowCore::keyword(iSorts[[36]])$"$FIL" <- "Specimen_001_INX_ALM66C5-008-1_96wp_005.fcs"
+
+
+# This loop pulls the corrected sort names from the FFs
+correct_sort_names = function(FF_list) {
+  ## Declare variables
+  correct_sort_names <- vector(mode = "character", length = length(FF_list))
+  original_sort_dates <- vector(mode = "character", length = length(FF_list))
+  converted_sort_dates <- vector(mode = "character", length = length(FF_list))
+  formatted_sort_dates <- vector(mode = "character", length = length(FF_list))
+
+  ## Replace the sort names with the corret ones
+
+  #Extract the corrected sort names from the $FIL slot
+  for (i in seq_along(FF_list)) {
+    correct_sort_names[i] <- flowCore::keyword(iSorts[[i]])$"$FIL" 
+  }
+
+  #Extract the sort dates from the $DATE slot and format them
+  for (e in seq_along(FF_list)) {
+    original_sort_dates <- flowCore::keyword(iSorts[[e]])$"$DATE"
+    converted_sort_dates <- as.Date(original_sort_dates, format = "%d-%b-%Y")
+    formatted_sort_dates[e] <- format(converted_sort_dates, format = "%Y-%m-%d")
+  }
+
+  #Paste the Dates and correct names togeather and replace theincorrect ones
+  names(FF_list) <- paste0(formatted_sort_dates, " ", correct_sort_names)
+    
+  ## Return the modified list
+  return(FF_list)
+}
+iSorts <- correct_sort_names(iSorts)
 
 # I will clean the list by getting rid of the C4-2 and leukocyte control sort samples as they are unnecessary
 iSorts <- iSorts[!grepl("C4-2", names(iSorts))]
 iSorts <- iSorts[!grepl("leukocyte", names(iSorts))]
-
-
-# This function will correct the incorrect sample names in the main FlowFrames (.fcs)
-
-fix_sample_name_in_FFs = function(data, incorrect_name_pattern) {
-    # first we list out the previously corrected sample names
-    specimen_names <- vector(mode = "list", length = length(data))
-    for (e in seq_along(data)) {
-        specimen_names[[e]] <- stringr::str_extract(flowCore::keyword(data[[e]])$"$FIL", "Specimen*.*") 
-    }
-    
-    # then this loop and if statement will check if the sample name is incorrect or not
-    # if it is, it will be fixed based on the correct sample name list
-    incorrect_lst_positions <- c()
-    modif_data <- data
-    for (e in seq_along(data)) {
-        if(stringr::str_detect(flowCore::keyword(data[[e]])$"$FIL", incorrect_name_pattern) == TRUE) {
-            incorrect_lst_positions[e] <- e
-            flowCore::keyword(modif_data[[e]])$"$FIL" <- specimen_names[[e]]
-        } else {
-            #do nothing
-        }
-    }
-    incorrect_lst_positions <- incorrect_lst_positions[!is.na(incorrect_lst_positions)]
-    message(paste0("The following list elements were corrected:", deparse(substitute(incorrect_lst_positions))))
-    return(modif_data)
-}
-iSorts <- fix_sample_name_in_FFs(iSorts, "leukocyte")
 
 
 # I noticed that the colname order for the ctrl flow frames are different
@@ -644,76 +684,10 @@ iSort_dfs <- vector(mode = "list", length = length(iSorts))
 for (e in seq_along(iSorts)) {
     iSort_dfs[[e]] <- flowCore::getIndexSort(iSorts[[e]])
 }
+names(iSort_dfs) <- names(iSorts)
 
 
-# This loop pulls the corrected sort names from the FFs
-correct_sort_names <- vector(mode = "character", length = length(iSorts))
-for (i in seq_along(iSorts)) {
-  correct_sort_names[i] <- flowCore::keyword(iSorts[[i]])$"$FIL"
-}
-
-
-names(iSort_dfs) <- correct_sort_names
-
-
-# Before moving on and combining the dfs, I realized there is a mistake with the tube names in the case of
-# INX_ALM83C8-001-3. The TUBE NAME is incorrectly recorded as INX_ALM83C8-001-2, and has to be fixed
-# this function looks for the incorrect name (or a part of it) and replaces the sample names which contains this
-# pattern with the correct name
-correct_FACS_exp_names = function(data, incorrect_name_pattern) {
-    # first, create a list with the sample names found in the list of experiments/samples
-    df_name_lst <- vector(mode = "list", length = length(data))
-    for (e in seq_along(data)){
-        df_name_lst[[e]] <- data[[e]]$name
-    }
-    names(df_name_lst) <- names(data)
-    
-    # this line will look for the pattern which is in the incorrect sample names (e.g: the experiments were incorrectly named as negative
-    # leukocyte controls) and stores these in a new list
-    df_names_to_replace <- lapply(df_name_lst, grep, pattern = incorrect_name_pattern)
-    
-    # This is a control loop for the function. If there are incorrect sample names based on the pattern the function will continue and they
-    # will be replaced. Otherwise the function will stop.
-    continue <- FALSE
-    for (e in seq_along(df_names_to_replace)){
-        if (length(df_names_to_replace[e]) != 0) {
-            continue <- TRUE
-        } else {
-            continue <- FALSE
-        }
-    }
-    
-    if (continue == TRUE) {
-        # this loop will use the correct experimental group names (flowframe list names) to extract the proper sample names
-        # and stores them in a new list
-        message("Incorrect sample names found based on the given pattern. They will be replaced")
-        
-        df_names_replace_with <- vector(mode = "list", length = length(df_name_lst))
-        for (e in seq_along(df_name_lst)) {
-            df_names_replace_with[[e]] <- stringr::str_extract(names(df_name_lst[e]), "Specimen*.*")
-        }
-        
-        # this loop will first look at each flowframe and checks if the same flowframe in the names_to_replace has a length of larger than 0
-        # if yes, (which means that there are samples in this flowframe with the incorrect names) it replaces the sample names in those
-        # flowframe with the corresponding correct names found in the names_to_replace_with list
-        for (e in seq_along(df_name_lst)) {
-            if (length(df_names_to_replace[e]) != 0) {
-                data[[e]]$name <- stringr::str_replace_all(df_name_lst[[e]], unique(df_name_lst[[e]]), df_names_replace_with[[e]])
-            } else {
-                #do nothing
-            }
-        }
-        return(data)
-    } else {
-        message("No incorrect sample name has been found based on the give pattern. The function will stop.")
-        break
-    }
-    
-    
-    
-}
-iSort_dfs <- correct_FACS_exp_names(iSort_dfs, "leukocyte")
-
+# Convert the dataframe list to a large dataframe
 iSort_df <- do.call(rbind, iSort_dfs)
 
 
@@ -824,7 +798,6 @@ Unkn <- unique(Unkn)
 
 # NOTE: additionally, I realized that the sample naming is fixed for the sorted index files
 # from which I borrowed the names, so I fixed the naming for the sample IDs
-# however, this fixed sample ID should not be used outside of this snippet....
 fixed_ID <- str_replace_all(sampleID, pattern = "ALM-70C8-006-2",
                             replacement = "ALM70C8-006-2")
 fixed_ID <- str_replace_all(fixed_ID, pattern = "ALM69-C5-003-3",
@@ -835,11 +808,10 @@ fixed_ID <- str_replace_all(fixed_ID, pattern = SPACE,
                             replacement = "")
 fixed_ID <- str_replace_all(fixed_ID, pattern = "\\(A\\)",
                             replacement = "A")
-# IMPORTANT NOTE: this typo happened during sorting so it is screwed up!
+# IMPORTANT NOTE: this typo happened during sorting
 fixed_ID <- str_replace_all(fixed_ID, pattern = "LM86C6-005-2",
                             replacement = "LM68C6-005-2")
-#fixed_ID <- str_replace_all(fixed_ID, pattern = "LM78C7-005-1",
-#                            replacement = "ALM78C7-005-1")
+
 
 resp.Group <- vector(mode = "character", length = length(fixed_ID))
 for (e in seq_along(fixed_ID)){
@@ -879,23 +851,23 @@ for (e in seq_along(iSort_df$Name)) {
 
 
 # I will fix the sample names in the Name column in the iSort_df by removing the parenthesis 
-iSort_df$Name <- str_replace_all(iSort_df2$Name, "\\(A\\)", "A")
+iSort_df$Name <- str_replace_all(iSort_df$Name, "\\(A\\)", "A")
 
 
 # I believe I have the necessary metadata to unify everything in the cleaned up
-# database
+# table
 metadata <- list(sampleID, resp.Group, Dates)
-rm(sampleID, resp.Group, Dates, Resp, nonResp, Unkn)
-
-iSort_unif <- mutate(iSort_df, sampleID = metadata[[1]],
-                     resp.Group = metadata[[2]], dates = metadata[[3]]) 
+iSort_unif <- mutate(iSort_df, dates = metadata[[3]], resp.Group = metadata[[2]],
+                    sampleID = metadata[[1]], .before = "EpCAM")
+rownames(iSort_unif) <- NULL
 
 
 # I will save the generated dataframe
-write_csv(x = iSort_unif, file = paste0(script_version, "/", "Total_unified_index_sorts_with_metadata", "_", script_version, ".csv"))
+write_csv(x = iSort_unif, file = paste0(script_version, "/", "Unified_complete_index_sort_dataframe", "_", script_version, ".csv"))
 
 
 # Mariam seemed interested in the sorted cell numbers/patient so I will create an additional df with this info
+#NOTE: this section should be removed from the final release version of the script!
 count_CTCs = function(dataframe) {
     # I will bind the script version to a local variable to stop VS Codium from complaining :)
     script_version <- script_version
@@ -925,14 +897,44 @@ count_CTCs = function(dataframe) {
     message("The CTC numbers were saved as a .csv under the following name:", "\n", "CTC_numbers_per_patient", "_", script_version, ".csv")
     
     message("\n", "Here are the CTC numbers and additional information:")
+    print(cellNumbers)
     return(cellNumbers)
     
 }
 CTC_counts <- count_CTCs(iSort_unif)
 
+summ_counts = function(dataframe) {
+  ## Define variables
+  
+  unique_IDs <- vector(mode = "character")
+  output_df <- data.frame(matrix(nrow = length(unique_IDs), ncol = 3))
+
+  ## Calculate the sum of CTCs per patient
+  unique_IDs <- unique(dataframe[, 2])
+  for (i in seq_along(unique_IDs)) {
+    output_df[i, 1] <- unique_IDs[i]
+    output_df[i, 2] <- sum(dataframe[grep(x = dataframe[, 2], pattern = unique_IDs[i]), ][, 3])
+    output_df[i, 3] <- unique(dataframe[grep(x = dataframe[, 2], pattern = unique_IDs[i]), ][, 4])
+  }
+
+  ## Manage the output dataframe
+  colnames(output_df) <- c("patient_ID", "cell_number", "response_group")
+
+  ## Save and print the output
+  readr::write_csv(x = output_df, file = paste0(script_version, "/", "aggregated_CTC_numbers_per_patient", "_", script_version, ".csv"))
+  message("The CTC numbers were saved as a .csv under the following name:", "\n", "aggregated_CTC_numbers_per_patient", "_", script_version, ".csv")
+  message("\n", "Here are the CTC numbers and additional information:")
+  print(output_df)
+
+  ## Return the output
+  return(output_df)
+
+}
+sum_CTC_counts <- summ_counts(CTC_counts)
+
 
 # Remove unnecessary variables from this section
-rm(dates_df, CTC_counts, fixed_ID, metadata)
+rm(dates_df, CTC_counts, fixed_ID, metadata, sampleID, resp.Group, Dates, Resp, nonResp, Unkn)
 #################################################################   End Section  ##################################################################
 
 
