@@ -844,7 +844,7 @@ for (e in seq_along(iSorts)) {
 # This loop will match the dates of the samples
 Dates <- vector(mode = "character", length = nrow(iSort_df))
 for (e in seq_along(iSort_df$Name)) {
-    Dates[e] <- dates_df$Date[dates_df$Sample %in% iSort_df$Name[e]]
+    Dates[e] <- dates_df[dates_df$Sample %in% iSort_df$Name[e], ]$Date
 }
 # NOTE: don't use grep, grepl or str_detect, because for some reason it does not work well here
 

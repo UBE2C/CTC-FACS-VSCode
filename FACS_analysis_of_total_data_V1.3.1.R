@@ -84,7 +84,7 @@ packages <- c("tidyverse", "rebus", "progress", "ggpubr", "ggsci", "rstudioapi",
 lapply(packages, library, character.only = TRUE)
 
 # Define the working directory and the directory containing the .fcs and other necessary files
-path <- c("/Users/ramasz/Coding/Gabi_R")
+path <- str_extract(rstudioapi::getActiveDocumentContext()$path, "[/]+[A-Za-z]+[/]+[a-z]+[/]+[A-Za-z]+[/]+[_A-Za-z]+[/]+[-A-Za-z]+")
 setwd(path)
 FACS_files <- c("/FACS_fcs_csv_files")
 
@@ -190,8 +190,8 @@ rm(bioconductor_packages, cran_packages, packages, FACS_files)
 
 
 # Subset the control samples for normalization (FF stands for FlowFrame)
-sCtrl <- names(SortList)[grep("C4-2", names(SortList))]
-sCtrl <- sCtrl[!grepl("INX", sCtrl)]
+sCtrl <- names(SortList)[grep(pattern = "C4-2", x = names(SortList))]
+sCtrl <- sCtrl[!grepl(pattern = "INX", x = sCtrl)]
 
 ctrlFFs <- SortList[c(sCtrl)]
 ctrlSumm <- lapply(ctrlFFs, summary)
@@ -206,7 +206,7 @@ names(ctrlFFs)[30] <- "2022-05-23 Specimen_001_C4-2 pos ctr_003.fcs"
 
 
 # This loop will re-assign the MFI values from the ctrlFFs to a new list, and makes a unified df
-ctrlFF_dfs <- list()
+ctrlFF_dfs <- vector(mode = "list", length = length(ctrlFFs))
 for(e in seq_along(ctrlFFs)){
     ctrlFF_dfs[[e]] <- ctrlFFs[[e]]@exprs
 }
@@ -225,11 +225,10 @@ head(ctrlFF_dfs_Fluo)
 
 
 # To see the data distribution and spot if there are some values which are strong outliers I transform the dataframe to a long version
-# and I make a density plot. This will help me to determine if I want to use the mean or the median for normalization
+# and I make a density plot.
 
-# Note: it is not recommended to use the mean values for MFI dta analysis since it normally does not follow normal distribution
+# Note: it is not recommended to use the mean values for MFI data analysis since it normally does not follow normal distribution
 # instead one should use the median values, so all the calculations and normalization will be done by the median values
-ctrlFF_dfs_Fluo <- dplyr::select(ctrlFF_dfs_Fluo, EpCAM, PSMA)
 long_ctrlFF_dfs_Fluo <- pivot_longer(ctrlFF_dfs_Fluo, cols = c(EpCAM, PSMA),
                              names_to = "Channels", values_to = "MFI_values")
 
@@ -248,19 +247,19 @@ rm(long_ctrlFF_dfs_Fluo)
 
 
 # Calculate the median MFI values for the control samples which will be used for normalization and QC
-medianFlowFrame = function(flowframe) {
-    tmp_lst <- list()
-    for (i in seq_along(flowframe)) {
+medianFlowFrame = function(FlowFrameList) {
+    tmp_lst <- vector(mode = "list", length = length(FlowFrameList))
+    for (i in seq_along(FlowFrameList)) {
         
-        tmp_lst[[i]] <- flowframe[[i]]@exprs
+        tmp_lst[[i]] <- FlowFrameList[[i]]@exprs
     }
     
-    channel_names <- colnames(flowframe[[1]]@exprs)
+    channel_names <- colnames(FlowFrameList[[1]]@exprs)
     names(channel_names) <- NULL
     df <- data.frame(matrix(nrow = 1, ncol = length(channel_names)))
     colnames(df) <- channel_names
     
-    median_lst <- list()
+    median_lst <- vector(mode = "list", length = length(tmp_lst))
     for (e in seq_along(tmp_lst)){
         median_lst[[e]] <- df
         for (i in seq_len(ncol(tmp_lst[[1]]))) {
@@ -268,7 +267,7 @@ medianFlowFrame = function(flowframe) {
             median_lst[[e]][i] <- m
         }
     }
-    names(median_lst) <- names(flowframe)
+    names(median_lst) <- names(FlowFrameList)
     
     return(median_lst)  
 }
@@ -278,8 +277,8 @@ head(ctrlMedian)
 
 # Due to the fact that Both Martina and Me ran/used the same control set on the same day, there might be duplicates in the dataframe
 # I write a function which check if elements of the list are redundant/equal. If yes, remove them.
-equal_elements = function(data) {
-  tmp <- c()
+equal_elements = function(data, remove = FALSE) {
+  tmp <- vector(mode = "character", length = length(data))
   for (i in seq_along(data)) {
     if (i < length(data)) {
       if (all(data[[i]] == data[[i + 1]])) {
@@ -292,20 +291,27 @@ equal_elements = function(data) {
     }  
   }
   
-  to_remove <- which(grepl("are equal", tmp)) # which(...): This function then finds the indices of TRUE values in the logical vector returned by grepl(...). These indices correspond to the elements that match the pattern.
+  if(remove == TRUE){
+    to_remove <- which(grepl("are equal", tmp)) # which(...): This function then finds the indices of TRUE values in the logical vector returned by grepl(...). These indices correspond to the elements that match the pattern.
   
-  if (length(to_remove) > 0) {
-      message(paste("Elements", paste(to_remove, collapse = ", "), "are duplicated so one of the elements will be removed"))
-      data_2 <- data[-to_remove] # this -to_remove will remove the selected values
-      } else {
-      message("no duplicated elements found, returning the unmodified object")
-      }
-  old_object_name <- deparse(substitute(data))
-  new_object_name <- paste0(old_object_name, "_clean")
-  assign(new_object_name, data_2, envir = .GlobalEnv)
-  message(paste("Returning a new, clean object with the name:", paste0(old_object_name, "_clean")))
+    if (length(to_remove) > 0) {
+        message(paste("Elements", paste(to_remove, collapse = ", "), "are duplicated so one of the elements will be removed"))
+        data_2 <- data[-to_remove] # this -to_remove will remove the selected values
+        } else {
+        message("no duplicated elements found, returning the unmodified object")
+        }
+    old_object_name <- deparse(substitute(data))
+    new_object_name <- paste0(old_object_name, "_clean")
+    assign(new_object_name, data_2, envir = .GlobalEnv)
+    message(paste("Returning a new, clean object with the name:", paste0(old_object_name, "_clean")))
+
+  } else {
+    return(tmp)
+
+  }
+  
 }
-equal_elements(ctrlMedian)  
+equal_elements(ctrlMedian, remove = TRUE)  
 head(ctrlMedian_clean)
 
 
@@ -351,14 +357,14 @@ head(ctrlFluo_GrMedian)
 
 calculating_individual_MAD = function(data, col_names = NULL) {
     #Extract the MFI dfs from the FFs into a temp list
-    FF_df_lst <- list()
+    FF_df_lst <- vector(mode = "list", length = length(data))
     for (e in seq_along(data)) {
         FF_df_lst[[e]] <- data[[e]]@exprs
     }
     
     #Calculate the MAD values of each column of each df in the list
     df <- data.frame(matrix(nrow = 1, ncol = ncol(FF_df_lst[[1]])))
-    MAD_lst <- list()
+    MAD_lst <- vector(mode = "list", length = length(FF_df_lst))
     for (e in seq_along(FF_df_lst)) {
         MAD_lst[[e]] <- df
         for (i in seq_len(ncol(FF_df_lst[[1]]))) {
@@ -430,12 +436,11 @@ print(ctrlFluo_MADM)
 
 # Visualizing the Median distribution and the MADM values
 # I reformat the means/medians df to better visualize fluorophore data
-ctrlMedian_Fluo <- dplyr::select(ctrlMedian_Fluo, EpCAM, PSMA)
-long_ctrlMed_F <- pivot_longer(ctrlMedian_Fluo, cols = c(EpCAM, PSMA),
+long_ctrlMed_F <- tidyr::pivot_longer(ctrlMedian_Fluo, cols = c(EpCAM, PSMA),
                                names_to = "Channels", values_to = "MFI_medians")
 head(long_ctrlMed_F)
 
-ctrlMedian_dist_box_p <- ggplot(data = long_ctrlMed_F,
+ctrlMedian_dist_box_p <- ggplot2::ggplot(data = long_ctrlMed_F,
                                     aes(fill = Channels, x = Channels, 
                                         y = log10(MFI_medians))) +
                                     stat_boxplot() +
@@ -445,16 +450,18 @@ ctrlMedian_dist_box_p <- ggplot(data = long_ctrlMed_F,
                                     scale_fill_tron() +
                                     ggtitle("control EpCAM and PSMA median MFI values") +
                                     theme_classic() +
-                                    theme(plot.title = element_text(hjust = 0.5))
+                                    theme(plot.title = element_text(hjust = 0.5),
+                                          text = element_text(size = 18))
 print(ctrlMedian_dist_box_p)
 
 ggsave(filename = paste0("Ctrl_samples_medians", "_", script_version, ".png"), ctrlMedian_dist_box_p,
        device = "png", path = paste0(script_version, "/", "Plots"),
-       width = 3000, height = 1500, units = "px")
+       width = 3000, height = 1500, units = "px", dpi = 320)
+
 rm(ctrlMedian_dist_box_p)
 
 
-ctrlMedian_dist_dens_p <- ggplot(data = long_ctrlMed_F,
+ctrlMedian_dist_dens_p <- ggplot2::ggplot(data = long_ctrlMed_F,
                                 aes(x = log10(MFI_medians), fill = Channels)) +
                                 #scale_x_continuous(limits = c(0, 6000)) +
                                 geom_density(alpha = 0.5) +
@@ -462,28 +469,27 @@ ctrlMedian_dist_dens_p <- ggplot(data = long_ctrlMed_F,
                                 ggtitle("control EpCAM and PSMA median MFI values - density plot") +
                                 labs(x = expression("log" [10] *" median MFI values")) +
                                 theme_classic() +
-                                theme(plot.title = element_text(hjust = 0.5))
+                                theme(plot.title = element_text(hjust = 0.5),
+                                      text = element_text(size = 18))
 print(ctrlMedian_dist_dens_p)
 
 ggsave(filename = paste0("Ctrl_samples_medians_density", "_", script_version, ".png"), ctrlMedian_dist_dens_p,
        device = "png", path = paste0(script_version, "/", "Plots"),
-       width = 3000, height = 1500, units = "px")
+       width = 3000, height = 1500, units = "px", dpi = 320)
 rm(ctrlMedian_dist_dens_p)
 
 
 # Creating a summary stat df for error bar visualization
-ctrlFluo_GrMedian <- dplyr::select(ctrlFluo_GrMedian, EpCAM, PSMA)
-long_ctrlFluo_GrMedian <- pivot_longer(ctrlFluo_GrMedian, cols = c(EpCAM, PSMA),
+long_ctrlFluo_GrMedian <- tidyr::pivot_longer(ctrlFluo_GrMedian, cols = c(EpCAM, PSMA),
                                names_to = "Channels", values_to = "MFI_grand_medians")
-ctrlFluo_MADM <- dplyr::select(ctrlFluo_MADM, EpCAM, PSMA)
-long_ctrlFluo_MADM <- pivot_longer(ctrlFluo_MADM, cols = c(EpCAM, PSMA),
+long_ctrlFluo_MADM <- tidyr::pivot_longer(ctrlFluo_MADM, cols = c(EpCAM, PSMA),
                                    names_to = "Channels", values_to = "MADM")
 ctrlFluo_sum_stat <- cbind(long_ctrlFluo_GrMedian, long_ctrlFluo_MADM[, 2])
 print(ctrlFluo_sum_stat)
 rm(long_ctrlFluo_GrMedian, long_ctrlFluo_MADM)
 
 # Plotting the Grand Median and MADM values on a bar chart with the error bars
-MADM_ctrlFluo_p <- ggplot(data = ctrlFluo_sum_stat,
+MADM_ctrlFluo_p <- ggplot2::ggplot(data = ctrlFluo_sum_stat,
                          aes(x = Channels, y = log10(MFI_grand_medians), fill = Channels)) +
     geom_col(alpha = 0.5, color = "black") +
     geom_errorbar(aes(x = Channels, ymin = log10(MFI_grand_medians - MADM), ymax = log10(MFI_grand_medians + MADM),
@@ -492,12 +498,12 @@ MADM_ctrlFluo_p <- ggplot(data = ctrlFluo_sum_stat,
     labs(x = expression("Channels"), y = expression("log"[10]*" Grand median MFI values")) +
     ggtitle("MADM plot of multiple control runs") +
     theme_classic() +
-    theme(legend.position = "none", plot.title = element_text(hjust = 0.5))
+    theme(legend.position = "none", plot.title = element_text(hjust = 0.5), text = element_text(size = 18))
 print(MADM_ctrlFluo_p)
 
 ggsave(filename = paste0("Ctrl_samples_medians_MADM", "_", script_version, ".png"), MADM_ctrlFluo_p,
        device = "png", path = paste0(script_version, "/", "Plots"),
-       width = 3000, height = 1500, units = "px")
+       width = 3000, height = 1500, units = "px", dpi = 320)
 rm(MADM_ctrlFluo_p)
 
 
