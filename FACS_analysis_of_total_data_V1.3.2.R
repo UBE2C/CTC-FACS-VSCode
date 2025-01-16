@@ -864,32 +864,32 @@ for (e in seq_along(iSort_df$Name)) {
 
 # I believe I have the necessary metadata to unify everything in the cleaned up
 # database
-metadata <- list(fixed_ID, resp.Group, Dates)
+metadata <- list(sampleID, fixed_ID, resp.Group, Dates)
 
-iSort_unif <- mutate(iSort_df, dates = metadata[[3]], resp.Group = metadata[[2]],
-                     sampleID = metadata[[1]], .before = "EpCAM")
+iSort_unif <- mutate(iSort_df, dates = metadata[[4]], resp.Group = metadata[[3]], oSampleID = metadata[[1]],
+                     fSampleID = metadata[[2]], .before = "EpCAM") #oSampleID = original sample ID, fSampleID = fixed sample ID
 
 
 # I will save the generated dataframe
 write_csv(x = iSort_unif, file = paste0(script_version, "/", "Unified_index_sorts_with_metadata", "_", script_version, ".csv"))
 
 
-# Mariam seemed interested in the sorted cell numbers/patient so I will create an additional df with this info
+# Create a dataframe containing the sample specific CTC counts, IDs and respGroups
 count_CTCs = function(dataframe) {
     # I will bind the script version to a local variable to stop VS Codium from complaining :)
     script_version <- script_version
 
     # This line will subset the unique sampleIDs
-    uniqueIDs <- unique(dataframe$sampleID)
+    uniqueIDs <- unique(dataframe$fSampleID)
     
     # This line will create a new df containing the unique sampleIDs, pure patient IDs the corresponding CTC numbers and the response group
-    cellNumbers <- data.frame(sampleID = uniqueIDs, patientID = NA, cellNumbers = NA, responseGroup = NA)
+    cellNumbers <- data.frame(fSampleID = uniqueIDs, patientID = NA, cellNumbers = NA, responseGroup = NA)
     
     # I will create a temp df to hold the unique sample info for the new df, and run a loop to fill up the cellNumbers df
     filteredSample <- c()
     for (i in seq_along(uniqueIDs)) {
         
-        filteredSample <- dplyr::filter(dataframe, sampleID == uniqueIDs[i])
+        filteredSample <- dplyr::filter(dataframe, fSampleID == uniqueIDs[i])
         
         cellNumbers$cellNumbers[i] <- nrow(filteredSample)
         cellNumbers$responseGroup [i] <- unique(filteredSample$resp.Group)
@@ -911,6 +911,7 @@ count_CTCs = function(dataframe) {
 CTC_counts <- count_CTCs(iSort_unif)
 
 
+# Create a dataframe containing the sum of CTCs/patient, IDs and respGroups
 summ_counts = function(dataframe) {
   ## Define variables
   
@@ -918,11 +919,11 @@ summ_counts = function(dataframe) {
   output_df <- data.frame(matrix(nrow = length(unique_IDs), ncol = 3))
   
   ## Calculate the sum of CTCs per patient
-  unique_IDs <- unique(dataframe[, 2])
+  unique_IDs <- unique(dataframe$patientID)
   for (i in seq_along(unique_IDs)) {
     output_df[i, 1] <- unique_IDs[i]
-    output_df[i, 2] <- sum(dataframe[grep(x = dataframe[, 2], pattern = unique_IDs[i]), ][, 3])
-    output_df[i, 3] <- unique(dataframe[grep(x = dataframe[, 2], pattern = unique_IDs[i]), ][, 4])
+    output_df[i, 2] <- sum(dataframe[grep(x = dataframe$patientID, pattern = unique_IDs[i]), ][, 3])
+    output_df[i, 3] <- unique(dataframe[grep(x = dataframe$patientID, pattern = unique_IDs[i]), ][, 4])
   }
   
   ## Manage the output dataframe
