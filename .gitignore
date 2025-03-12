@@ -2,7 +2,8 @@
 */
 
 #Ignore macOS setting files
-*.DS_Store
+.DS_Store
+.Rhistory
 
 # Ignore plots
 *.png
